@@ -41,7 +41,6 @@ typedef enum
 	
 	UIView *_container; // used as view for the controller
 	UIView *_innerContainer; // sized and placed to be fullscreen within the container
-	UIToolbar *_toolbar;
 	UIScrollView *_thumbsView;
 	UIScrollView *_scroller;
 	UIView *_captionContainer;
@@ -59,24 +58,25 @@ typedef enum
 }
 
 - (id)initWithPhotoSource:(NSObject<FGalleryViewControllerDelegate>*)photoSrc;
-- (id)initWithPhotoSource:(NSObject<FGalleryViewControllerDelegate>*)photoSrc barItems:(NSArray*)items;
 
 - (void)next;
 - (void)previous;
 - (void)gotoImageByIndex:(NSUInteger)index animated:(BOOL)animated;
 - (void)removeImageAtIndex:(NSUInteger)index;
 - (void)reloadGallery;
+- (void)enterFullscreen;
+- (void)exitFullscreen;
 - (FGalleryPhoto*)currentPhoto;
 
 @property NSInteger currentIndex;
 @property NSInteger startingIndex;
 @property (nonatomic,assign) NSObject<FGalleryViewControllerDelegate> *photoSource;
-@property (nonatomic,readonly) UIToolbar *toolBar;
 @property (nonatomic,readonly) UIView* thumbsView;
 @property (nonatomic,retain) NSString *galleryID;
 @property (nonatomic) BOOL useThumbnailView;
 @property (nonatomic) BOOL beginsInThumbnailView;
 @property (nonatomic) BOOL hideTitle;
+@property (nonatomic) BOOL shouldLayoutViews;
 
 @end
 

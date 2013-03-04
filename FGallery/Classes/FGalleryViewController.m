@@ -11,7 +11,6 @@
 #define kThumbnailSize 75
 #define kThumbnailSpacing 4
 #define kCaptionPadding 3
-#define kToolbarHeight 40
 
 
 @interface FGalleryViewController (Private)
@@ -23,20 +22,16 @@
 - (void)moveScrollerToCurrentIndexWithAnimation:(BOOL)animation;
 - (void)updateTitle;
 - (void)updateButtons;
-- (void)layoutButtons;
 - (void)updateScrollSize;
 - (void)updateCaption;
 - (void)resizeImageViewsWithRect:(CGRect)rect;
 - (void)resetImageViewZoomLevels;
 
-- (void)enterFullscreen;
-- (void)exitFullscreen;
 - (void)enableApp;
 - (void)disableApp;
 
 - (void)positionInnerContainer;
 - (void)positionScroller;
-- (void)positionToolbar;
 - (void)resizeThumbView;
 
 // thumbnails
@@ -70,11 +65,11 @@
 @synthesize photoSource = _photoSource;
 @synthesize currentIndex = _currentIndex;
 @synthesize thumbsView = _thumbsView;
-@synthesize toolBar = _toolbar;
 @synthesize useThumbnailView = _useThumbnailView;
 @synthesize startingIndex = _startingIndex;
 @synthesize beginsInThumbnailView = _beginsInThumbnailView;
 @synthesize hideTitle = _hideTitle;
+@synthesize shouldLayoutViews = _shouldLayoutViews;
 
 #pragma mark - Public Methods
 
@@ -101,6 +96,7 @@
 		_photoThumbnailViews				= [[NSMutableArray alloc] init];
 		_barItems							= [[NSMutableArray alloc] init];
         
+        _shouldLayoutViews                  = YES;
         /*
          // debugging: 
          _container.layer.borderColor = [[UIColor yellowColor] CGColor];
@@ -152,17 +148,6 @@
 	return self;
 }
 
-
-- (id)initWithPhotoSource:(NSObject<FGalleryViewControllerDelegate>*)photoSrc barItems:(NSArray*)items
-{
-	if((self = [self initWithPhotoSource:photoSrc])) {
-		
-		[_barItems addObjectsFromArray:items];
-	}
-	return self;
-}
-
-
 - (void)loadView
 {
     // create public objects first so they're available for custom configuration right away. positioning comes later.
@@ -170,11 +155,9 @@
     _innerContainer						= [[UIView alloc] initWithFrame:CGRectZero];
     _scroller							= [[UIScrollView alloc] initWithFrame:CGRectZero];
     _thumbsView							= [[UIScrollView alloc] initWithFrame:CGRectZero];
-    _toolbar							= [[UIToolbar alloc] initWithFrame:CGRectZero];
     _captionContainer					= [[UIView alloc] initWithFrame:CGRectZero];
     _caption							= [[UILabel alloc] initWithFrame:CGRectZero];
     
-    _toolbar.barStyle					= UIBarStyleBlackTranslucent;
     _container.backgroundColor			= [UIColor blackColor];
     
     // listen for container frame changes so we can properly update the layout during auto-rotation or going in and out of fullscreen
@@ -217,9 +200,7 @@
 	[_container addSubview:_thumbsView];
 	
 	[_innerContainer addSubview:_scroller];
-	[_innerContainer addSubview:_toolbar];
 	
-	[_toolbar addSubview:_captionContainer];
 	[_captionContainer addSubview:_caption];
 	
 	// create buttons for toolbar
@@ -233,9 +214,6 @@
 	[_barItems insertObject:_prevButton atIndex:0];
 	
 	_prevNextButtonSize = leftIcon.size.width;
-	
-	// set buttons on the toolbar.
-	[_toolbar setItems:_barItems animated:NO];
     
     // build stuff
     [self reloadGallery];
@@ -253,7 +231,6 @@
     [_innerContainer release], _innerContainer = nil;
     [_scroller release], _scroller = nil;
     [_thumbsView release], _thumbsView = nil;
-    [_toolbar release], _toolbar = nil;
     [_captionContainer release], _captionContainer = nil;
     [_caption release], _caption = nil;
     
@@ -460,11 +437,9 @@
 	[self positionInnerContainer];
 	[self positionScroller];
 	[self resizeThumbView];
-	[self positionToolbar];
 	[self updateScrollSize];
 	[self updateCaption];
 	[self resizeImageViewsWithRect:_scroller.frame];
-	[self layoutButtons];
 	[self arrangeThumbs];
 	[self moveScrollerToCurrentIndexWithAnimation:NO];
 }
@@ -503,7 +478,8 @@
 
 - (void)positionInnerContainer
 {
-	CGRect screenFrame = [[UIScreen mainScreen] bounds];
+//	CGRect screenFrame = [[UIScreen mainScreen] bounds];
+    CGRect screenFrame = self.view.bounds;
 	CGRect innerContainerRect;
 	
 	if( self.interfaceOrientation == UIInterfaceOrientationPortrait || self.interfaceOrientation == UIInterfaceOrientationPortraitUpsideDown )
@@ -521,7 +497,8 @@
 
 - (void)positionScroller
 {
-	CGRect screenFrame = [[UIScreen mainScreen] bounds];
+//	CGRect screenFrame = [[UIScreen mainScreen] bounds];
+    CGRect screenFrame = self.view.bounds;
 	CGRect scrollerRect;
 	
 	if( self.interfaceOrientation == UIInterfaceOrientationPortrait || self.interfaceOrientation == UIInterfaceOrientationPortraitUpsideDown )
@@ -535,13 +512,6 @@
 	
 	_scroller.frame = scrollerRect;
 }
-
-
-- (void)positionToolbar
-{
-	_toolbar.frame = CGRectMake( 0, _scroller.frame.size.height-kToolbarHeight, _scroller.frame.size.width, kToolbarHeight );
-}
-
 
 - (void)resizeThumbView
 {
@@ -561,21 +531,21 @@
         
         [self disableApp];
         
-        UIApplication* application = [UIApplication sharedApplication];
-        if ([application respondsToSelector: @selector(setStatusBarHidden:withAnimation:)]) {
-            [[UIApplication sharedApplication] setStatusBarHidden: YES withAnimation: UIStatusBarAnimationFade]; // 3.2+
-        } else {
-    #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-            [[UIApplication sharedApplication] setStatusBarHidden: YES animated:YES]; // 2.0 - 3.2
-    #pragma GCC diagnostic warning "-Wdeprecated-declarations"
-        }
+//        UIApplication* application = [UIApplication sharedApplication];
+//        if ([application respondsToSelector: @selector(setStatusBarHidden:withAnimation:)]) {
+//            [[UIApplication sharedApplication] setStatusBarHidden: YES withAnimation: UIStatusBarAnimationFade]; // 3.2+
+//        } else {
+//    #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+//            [[UIApplication sharedApplication] setStatusBarHidden: YES animated:NO]; // 2.0 - 3.2
+//    #pragma GCC diagnostic warning "-Wdeprecated-declarations"
+//        }
         
         [self.navigationController setNavigationBarHidden:YES animated:YES];
+        [self.navigationController setToolbarHidden:YES animated:YES];
         
         [UIView beginAnimations:@"galleryOut" context:nil];
         [UIView setAnimationDelegate:self];
         [UIView setAnimationDidStopSelector:@selector(enableApp)];
-        _toolbar.alpha = 0.0;
         _captionContainer.alpha = 0.0;
         [UIView commitAnimations];
     }
@@ -589,21 +559,22 @@
     
 	[self disableApp];
     
-	UIApplication* application = [UIApplication sharedApplication];
-	if ([application respondsToSelector: @selector(setStatusBarHidden:withAnimation:)]) {
-		[[UIApplication sharedApplication] setStatusBarHidden:NO withAnimation:UIStatusBarAnimationFade]; // 3.2+
-	} else {
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-		[[UIApplication sharedApplication] setStatusBarHidden:NO animated:NO]; // 2.0 - 3.2
-#pragma GCC diagnostic warning "-Wdeprecated-declarations"
-	}
+//	UIApplication* application = [UIApplication sharedApplication];
+//	if ([application respondsToSelector: @selector(setStatusBarHidden:withAnimation:)]) {
+//		[[UIApplication sharedApplication] setStatusBarHidden:NO withAnimation:UIStatusBarAnimationFade]; // 3.2+
+//	} else {
+//#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+//		[[UIApplication sharedApplication] setStatusBarHidden:NO animated:NO]; // 2.0 - 3.2
+//#pragma GCC diagnostic warning "-Wdeprecated-declarations"
+//	}
     
 	[self.navigationController setNavigationBarHidden:NO animated:YES];
+    [self.navigationController setToolbarHidden:NO animated:YES];
     
 	[UIView beginAnimations:@"galleryIn" context:nil];
 	[UIView setAnimationDelegate:self];
 	[UIView setAnimationDidStopSelector:@selector(enableApp)];
-	_toolbar.alpha = 1.0;
+    
 	_captionContainer.alpha = 1.0;
 	[UIView commitAnimations];
 }
@@ -696,20 +667,6 @@
 {
 	_prevButton.enabled = ( _currentIndex <= 0 ) ? NO : YES;
 	_nextButton.enabled = ( _currentIndex >= [_photoSource numberOfPhotosForPhotoGallery:self]-1 ) ? NO : YES;
-}
-
-
-- (void)layoutButtons
-{
-	NSUInteger buttonWidth = roundf( _toolbar.frame.size.width / [_barItems count] - _prevNextButtonSize * .5);
-	
-	// loop through all the button items and give them the same width
-	NSUInteger i, count = [_barItems count];
-	for (i = 0; i < count; i++) {
-		UIBarButtonItem *btn = [_barItems objectAtIndex:i];
-		btn.width = buttonWidth;
-	}
-	[_toolbar setNeedsLayout];
 }
 
 
@@ -1186,9 +1143,6 @@
 	
     [_innerContainer release];
     _innerContainer = nil;
-	
-    [_toolbar release];
-    _toolbar = nil;
 	
     [_thumbsView release];
     _thumbsView = nil;
